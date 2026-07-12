@@ -1,6 +1,6 @@
-'use client';
+  'use client';
 import { useState, useRef, useEffect } from 'react';
-
+ 
 export default function Home() {
   const [blobState, setBlobState] = useState('idle'); // idle | listening | thinking | speaking
   const [captionRole, setCaptionRole] = useState('VANI');
@@ -8,12 +8,12 @@ export default function Home() {
   const [showCaption, setShowCaption] = useState(false);
   const [muted, setMuted] = useState(false);
   const [supported, setSupported] = useState(true);
-
+ 
   const historyRef = useRef([]); // conversation memory sent to the API each turn
   const recognitionRef = useRef(null);
   const recognizingRef = useRef(false);
   const captionTimerRef = useRef(null);
-
+ 
   useEffect(() => {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) {
@@ -24,7 +24,7 @@ export default function Home() {
     recognition.lang = 'en-IN';
     recognition.interimResults = false;
     recognition.maxAlternatives = 1;
-
+ 
     recognition.onstart = () => {
       recognizingRef.current = true;
       setBlobState('listening');
@@ -33,16 +33,17 @@ export default function Home() {
       recognizingRef.current = false;
       setBlobState((s) => (s === 'listening' ? 'idle' : s));
     };
-    recognition.onerror = () => {
+    recognition.onerror = (e) => {
       recognizingRef.current = false;
       setBlobState('idle');
+      showCaptionFor('ERROR', `Mic error: ${e.error}`, 8000);
     };
     recognition.onresult = (e) => {
       const text = e.results[0][0].transcript;
       handleUserUtterance(text);
     };
     recognitionRef.current = recognition;
-
+ 
     // opening line
     const t = setTimeout(() => {
       const opener = "Namaste! I'm VANI. Tap the mic and ask me anything — balance, transactions, or just talk.";
@@ -52,7 +53,7 @@ export default function Home() {
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
+ 
   function showCaptionFor(role, text, hideAfter = 3200) {
     clearTimeout(captionTimerRef.current);
     setCaptionRole(role);
@@ -60,7 +61,7 @@ export default function Home() {
     setShowCaption(true);
     captionTimerRef.current = setTimeout(() => setShowCaption(false), hideAfter);
   }
-
+ 
   function speak(text) {
     if (!('speechSynthesis' in window)) return;
     const u = new SpeechSynthesisUtterance(text);
@@ -70,11 +71,11 @@ export default function Home() {
     u.onend = () => setBlobState('idle');
     window.speechSynthesis.speak(u);
   }
-
+ 
   async function handleUserUtterance(text) {
     showCaptionFor('YOU', text, 3000);
     setBlobState('thinking');
-
+ 
     try {
       const res = await fetch('/api/chat', {
         method: 'POST',
@@ -83,13 +84,13 @@ export default function Home() {
       });
       const data = await res.json();
       const reply = data.reply || "Sorry, I didn't catch that.";
-
+ 
       historyRef.current = [
         ...historyRef.current,
         { role: 'user', content: text },
         { role: 'assistant', content: reply },
       ].slice(-16); // keep last 16 turns of memory
-
+ 
       showCaptionFor('VANI', reply, 6500);
       speak(reply);
     } catch (err) {
@@ -99,7 +100,7 @@ export default function Home() {
       setBlobState('idle');
     }
   }
-
+ 
   function toggleMic() {
     if (!supported || muted) return;
     const recognition = recognitionRef.current;
@@ -111,7 +112,7 @@ export default function Home() {
     window.speechSynthesis.cancel();
     recognition.start();
   }
-
+ 
   function toggleMute() {
     setMuted((m) => {
       const next = !m;
@@ -119,7 +120,7 @@ export default function Home() {
       return next;
     });
   }
-
+ 
   function resetConversation() {
     window.speechSynthesis.cancel();
     if (recognizingRef.current) recognitionRef.current.stop();
@@ -127,26 +128,26 @@ export default function Home() {
     setBlobState('idle');
     showCaptionFor('VANI', 'Conversation reset. Tap the mic to start again.', 2500);
   }
-
+ 
   return (
     <div style={styles.screen}>
       <style>{keyframes}</style>
-
+ 
       <div style={{ textAlign: 'center' }}>
         <div style={styles.name}>VANI</div>
         <div style={styles.modeLabel}>Voice mode · Live AI</div>
       </div>
-
+ 
       {!supported && (
         <div style={styles.warn}>
           Speech recognition isn&apos;t supported here — try Chrome on desktop or Android.
         </div>
       )}
-
+ 
       <div style={styles.blobStage}>
         <div style={{ ...styles.blob, ...blobStyleFor(blobState) }} />
       </div>
-
+ 
       <div style={styles.captionWrap}>
         <div style={{ ...styles.captionRole, opacity: showCaption ? 1 : 0 }}>{captionRole}</div>
         <div
@@ -159,7 +160,7 @@ export default function Home() {
           {captionText}
         </div>
       </div>
-
+ 
       <div>
         <div style={styles.controls}>
           <button style={styles.ctrlBtn} onClick={toggleMute} title="Mute mic">
@@ -191,7 +192,7 @@ export default function Home() {
     </div>
   );
 }
-
+ 
 function MicIcon() {
   return (
     <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
@@ -206,7 +207,7 @@ function CloseIcon() {
     </svg>
   );
 }
-
+ 
 function blobStyleFor(state) {
   switch (state) {
     case 'listening':
@@ -234,7 +235,7 @@ function blobStyleFor(state) {
       };
   }
 }
-
+ 
 const keyframes = `
 @keyframes idlePulse { 0%,100%{transform:scale(1);} 50%{transform:scale(1.03);} }
 @keyframes listenPulse { 0%,100%{transform:scale(1);} 50%{transform:scale(1.08);} }
@@ -242,7 +243,7 @@ const keyframes = `
 @keyframes speakPulse { 0%{transform:scale(.97);} 100%{transform:scale(1.06);} }
 @keyframes thinkSpin { 0%{transform:scale(1) rotate(0deg);} 50%{transform:scale(.9) rotate(180deg);} 100%{transform:scale(1) rotate(360deg);} }
 `;
-
+ 
 const styles = {
   screen: {
     height: '100vh',
@@ -289,3 +290,4 @@ const styles = {
     textAlign: 'center',
   },
 };
+ 
